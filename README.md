@@ -12,8 +12,13 @@ What we basically do is copy the asm file to `/boot`, convert to machine code wi
 in the container) and then run it with [qemu](https://www.qemu.org/) which is an open source virtualization software.
 
 ```bash
-nasm -f bin /boot/boot_sect_simple.asm -o /boot/boot_sect_simple.bin && \
+nasm -f bin /boot/boot_sect_simple.asm -o /boot/boot_sect_simple.bin
+```
 
+The `-f bin` option tells the program to make raw machine code. If we don't add this I think it makes some kind
+of package with metadata. We might need this metadata for a more proper boot binary / package, but not for now!
+
+```
 # Be careful running this, it's an infinite loop :)
 alias qemu='qemu-system-x86_64'
 qemu /boot/boot_sect_simple.bin -curses
@@ -41,7 +46,30 @@ times 510-($-$$) db 0 # fill in '0's from bytes at current position to 510th
 dw 0xAA55 ; Write a word (2 bytes) data 0xAA55 at current position. I guess the 55 comes before the AA but I need to read up on assembly!
 ```
 
-The general idea seems to be that for assembly, you literally have to tell the language to move a byte and then put a letter there. I find this nuts! (meaning cool). Here is how I changed the file so it prints something quasi meaningful:
+The general idea seems to be that for assembly, you literally have to tell the language to move a byte and then put a letter there. The different registries are called `ax` `bx` `cx` and `dx` and you can reference decimals or bytes. Here are the examples from the document linked above.
+
+```assembly
+mov ax , 1234 ;   "store the decimal number 1234 in ax"
+mov cx , 0 x234 ; "store the hex number 0 x234 in cx"
+mov dx , ’t ’ ;   "store the ASCII code for letter ’t’ in dx"
+mov bx , ax ;     "copy the value of ax into bx , so now bx == 1234"
+```
+
+And then if we want to say:
+
+ - put in teletype mode to advance the cursor
+ - interrupt to change
+ - print an ascii character
+
+We would do:
+
+```bash
+mov ah, 0x0e ; tty mode
+mov al, 'H'
+int 0x10
+```
+
+And then here is how I changed the file so it prints something quasi meaningful:
 
 ```bash
 mov ah, 0x0e ; tty mode
@@ -82,15 +110,58 @@ times 510 - ($-$$) db 0
 dw 0xaa55
 ```
 
+This is like, me talking directly to my computer! I find this nuts! (meaning cool). 
+
 ### How is this going to work?
 I'm reading from the [Boot Process](http://www.cs.bham.ac.uk/~exr/lectures/opsys/10_11/lectures/os-dev.pdf) chapter
 here, which describes the following flow:
  
  - the computer without an OS has a simple utility, the Basic Input/Output Software (BIOS) that you likely know
 about if you've ever done any kind of debugging of your hardward. It's a set of routines that are called when the computer starts, and is mostly about control for disks, screen, memory, keyboard devices. 
- - If all goes well, the operating system is booted from a device. Since there is no way for the software to know where to look, there is a stupid rule that it knows to always look in certain addresses (physical locations) of the disk devices. And tada! We call this the Boot Sector (I've heard of this before!) and it's located at "Cylinder 0, Head 0, Sector 0)" If you've ever reformatted your hard drive you would have seen this little section and probably scratched your head. Good job for not deleting it :)
- - How does it find it? It literally just ends with this "magic number" `0xaa55`.
+ - If all goes well, the operating system is booted from a device. Since there is no way for the software to know where to look, there is a stupid rule that it knows to always look in certain addresses (physical locations) of the disk devices. And tada! We call this the Boot Sector (I've heard of this before!) and it's located at "Cylinder 0, Head 0, Sector 0)" If you've ever reformatted your hard drive you would have seen this little section and probably scratched your head. Good job for not deleting it :) It's identified correctly by ending in a "magic number" `0xaa55`. 
+
+Also from [this lecture](http://www.cs.bham.ac.uk/~exr/lectures/opsys/10_11/lectures/os-dev.pdf) on page 14, we can see how "lower memory" is mapped out when the computer starts up. Look at the little boot sector, he's so happy nestled there!
+
+![img/3-lower-memory.png](img/3-lower-memory.png)
+
+In computer speak, the BIOS is putting the Boot Sector at `0x7C00` (remember that `0x` indicates it's a hexidecaimal address, and since we have 16 characters we go from 123...def) 
+
+
+Open the file boot_sect_memory.asm
+
+First, we will define the X as data, with a label:
+
+
 
 I loaded the file into a graphical hex editor on my local machine to look at the hex from the compiled binary!
 
 ![img/2-ghex.png](img/2-ghex.png)
+
+Actually, there is a command line tool to do the same:
+
+```bash
+# man od --> dump files in octal and other formats
+od -t x1 -A n boot_sect_simple.bin
+ eb fe b4 0e b0 48 cd 10 b0 65 cd 10 b0 6c cd 10
+ cd 10 b0 6f cd 10 b0 00 cd 10 b0 44 cd 10 b0 69
+ cd 10 b0 6e cd 10 b0 6f cd 10 b0 73 cd 10 b0 61
+ cd 10 b0 75 cd 10 b0 72 cd 10 b0 21 cd 10 00 00
+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+*
+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 55 aa
+```
+
+You can even try this for the boot loader executables on your host!
+
+```bash
+$ od -t x1 -A n /boot/memtest86+.bin 
+```
+
+This is really interesting - the oldest CPU in Intel's family is called the Intel 8086,
+and it's *so* old that it only supported 16 bit instructions and no memory protection, 
+meaning that a user could interact with the kernel's memory directly. All modern Intel 
+emulators start in this mode so that they can continue happily in it, or switch to a more
+advanced mode (I don't totally understand this switch yet so I won't talk about it).
+
+Next we should talk about how to organize memory, but I'll save that for another round of work, because I
+want to jump to work on something else for a bit.
