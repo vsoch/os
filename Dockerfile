@@ -11,13 +11,19 @@ RUN apt-get update && apt-get install -y nasm qemu ghex
 RUN mkdir -p /code
 ADD . /code
 
-RUN apt-get clean          # tests, mysql,  postgres
-
 # 1. Create bootsector
 
 RUN mkdir -p /rootfs/boot
-RUN cp /code/boot/* /rootfs/boot && \
-    nasm -f bin /rootfs/boot/boot_sect_simple.asm -o /rootfs/boot/boot_sect_simple.bin && \
-    alias qemu='qemu-system-x86_64'
-    # qemu /rootfs/boot/boot_sect_simple.bin -curses
+WORKDIR /rootfs/boot
+RUN cp /code/boot/*asm /rootfs/boot && \
+    nasm -f bin /rootfs/boot/main.asm -o /rootfs/boot/boot.bin 
+    # This is how to look at binary
+    # xxd /rootfs/boot/boot.bin
+
+    # This is how to run
+    # qemu-system-x86_64 /rootfs/boot/boot.bin -curses
     # see img/1-create-boot.png
+
+RUN apt-get clean          # tests, mysql,  postgres
+
+ENTRYPOINT ["qemu-system-x86_64", "/rootfs/boot/boot.bin", "-curses"]

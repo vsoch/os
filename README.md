@@ -72,6 +72,8 @@ int 0x10
 And then here is how I changed the file so it prints something quasi meaningful:
 
 ```bash
+; Hello Dinosaur!
+
 mov ah, 0x0e ; tty mode
 mov al, 'H'
 int 0x10
@@ -107,9 +109,8 @@ jmp $ ; jump to current address = infinite loop
 
 ; padding and magic number
 times 510 - ($-$$) db 0
-dw 0xaa55
+dw 0xaa55 
 ```
-
 This is like, me talking directly to my computer! I find this nuts! (meaning cool). 
 
 ### How is this going to work?
@@ -125,13 +126,6 @@ Also from [this lecture](http://www.cs.bham.ac.uk/~exr/lectures/opsys/10_11/lect
 ![img/3-lower-memory.png](img/3-lower-memory.png)
 
 In computer speak, the BIOS is putting the Boot Sector at `0x7C00` (remember that `0x` indicates it's a hexidecaimal address, and since we have 16 characters we go from 123...def) 
-
-
-Open the file boot_sect_memory.asm
-
-First, we will define the X as data, with a label:
-
-
 
 I loaded the file into a graphical hex editor on my local machine to look at the hex from the compiled binary!
 
@@ -156,6 +150,92 @@ You can even try this for the boot loader executables on your host!
 ```bash
 $ od -t x1 -A n /boot/memtest86+.bin 
 ```
+
+### Improving our Boot Loader
+
+**Data**
+Instead of having each character defined separately like that, we can make a declaration of a string with db, which I think
+means "declare bytes of data." Let's make one called dinosaur_greeting and see if it produces the same. 
+Since we want to know where the string ends, we will make it null terminating (ends in 0).
+The other detail I'm adding here is that there should be a Global Offet defined so we are able to take into account the offset of the bootloader. I am still getting the hang of a lot of this, but I was able to write a simple
+boot loader that prints a screen, and includes a second file with a function to do this.
+
+**Registers**
+At this point I wanted to improve the above so I could work with strings instead of
+individual characters, and functions instead of single commands.
+Since we are getting into defining strings, we logically need places to put them.
+Up to this point we have been using the main memory, and we can do a little better.
+This is where registers come in - they are temporary storage locations for local variables.
+A register will make it easy to read and write without needing to specify specific memory addresses.
+
+**Functions and Includes**
+I won't go into detail, but there are ways to write functions (that can be reused)
+and even put them in separate files and "include" one in another. My final Boot Loader
+assemly script wound up looking like this:
+
+```bash
+;
+; A boot sector that says "Hello Dinosaur" using a print function
+;
+
+[org 0x7c00] ; Tell the assembler where this code will be loaded
+
+mov bx , dinosaur_greeting     ; Use BX as a parameter to our function , so
+call print_string              ; we can specify the address of a string.
+jmp $ ; Hang
+
+%include "print_string.asm"
+
+;
+; Data
+;
+
+dinosaur_greeting :
+    db ' Hello Dinosaur! ' , 0 ;
+
+; Padding and magic number.
+times 510 -( $ - $$ ) db 0
+dw 0xaa55
+
+```
+
+#TODO add 0-bootdinosaur.png here##
+
+with a function to print things:
+
+```bash
+;
+; print_string.asm
+;
+
+print_string:
+    pusha           ; push all register values to the stack
+    mov ah, 0x0e
+loop:
+    mov al, [bx]
+    int 0x10
+    add bx, 1
+    cmp al, 0
+    jne loop
+    popa            ; restore original register values
+    ret
+```
+
+Some fun things to try might be:
+ - create a boot loader that prints a randomly selected string
+
+## 2. Load from Disk
+
+As I was learning about the Boot Sector and BIOS, I felt very skeptical that a
+computer's entire start routine could fit in 512 bytes. Like, really? It turns out
+this intuition was on spot. Most operating systems will retrieve the remainder of
+code from disk --> memory --> execution. BIOS also gives us functions to manipulate
+data on disks, so I think we will look at that next.
+
+### Segments
+There are special registers called segments, with names `cs`, `ds`, `ss`, and `es`
+and here is where
+
 
 This is really interesting - the oldest CPU in Intel's family is called the Intel 8086,
 and it's *so* old that it only supported 16 bit instructions and no memory protection, 
