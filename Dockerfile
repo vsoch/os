@@ -33,7 +33,7 @@ RUN echo "\nPreparing Boot Sector..." && \
     # qemu-system-x86_64 /rootfs/boot/boot.bin -curses
     # see img/1-create-boot.png
 
-RUN echo "\nCompiling kernel..." #&& \
+RUN echo "\nCompiling kernel..." && \
     /usr/local/i386elfgcc/bin/i386-elf-gcc -ffreestanding -c /code/kernel/kernel.c -o /code/kernel/kernel.o && \
     nasm /code/kernel/kernel_entry.asm -f elf -o /code/kernel/kernel_entry.o && \ 
     i386-elf-ld -o /rootfs/boot/kernel.bin -Ttext 0x1000 /code/kernel/kernel_entry.o /code/kernel/kernel.o --oformat binary && \
