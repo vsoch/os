@@ -11,6 +11,7 @@ KERNEL_OFFSET equ 0x1000 ; The same one we used when linking the kernel
 
     mov bx, MSG_REAL_MODE
     call print ; 
+    call print_nl ;
 
     call load_kernel ; read the kernel from disk
     call switch_to_pm
@@ -46,7 +47,7 @@ BOOT_DRIVE        db 0 ; It is a good idea to store it in memory because 'dl' ma
 DINOSAUR_GREETING db "Hello Dinosaur!", 0
 MSG_REAL_MODE     db "Started in 16-bit real mode", 0
 MSG_PROT_MODE     db "Loaded 32-bit protected mode", 0
-MSG_LOAD_KERNEL db "Loading kernel into memory", 0
+MSG_LOAD_KERNEL   db "Loading kernel into memory", 0
 
 ; bootsector
 times 510-($-$$) db 0

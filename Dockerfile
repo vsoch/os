@@ -41,4 +41,4 @@ RUN echo "\nCompiling kernel..." #&& \
 
 RUN apt-get clean
 
-ENTRYPOINT ["qemu-system-x86_64", "/rootfs/boot/os-image.bin", "-curses"]
+ENTRYPOINT ["qemu-system-i386", "-fda", "/rootfs/boot/os-image.bin", "-curses"]
