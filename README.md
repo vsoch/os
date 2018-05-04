@@ -224,24 +224,116 @@ loop:
 Some fun things to try might be:
  - create a boot loader that prints a randomly selected string
 
-## 2. Load from Disk
+### Load from Disk
 
 As I was learning about the Boot Sector and BIOS, I felt very skeptical that a
 computer's entire start routine could fit in 512 bytes. Like, really? It turns out
 this intuition was on spot. Most operating systems will retrieve the remainder of
-code from disk --> memory --> execution. BIOS also gives us functions to manipulate
-data on disks, so I think we will look at that next.
+code from disk --> memory --> execution. To do this we have to switch into a 32
+bit protected mode, and we can then no longer use the BIOS.
 
-### Segments
+#### Segments
 There are special registers called segments, with names `cs`, `ds`, `ss`, and `es`
-and here is where
-
+and here is where we actually add two segments when we load into 32 bit mode, `fs`
+and `gs`. When we load into 32 bit mode we also need to define something called the
+global descriptor table (GDT) that defines where these segments are in memory. The 
+first entry of the GDT needs to be a null descriptor. From the
+32 bit mode we will be able to boot more easily into a higher level language like C. 
 
 This is really interesting - the oldest CPU in Intel's family is called the Intel 8086,
 and it's *so* old that it only supported 16 bit instructions and no memory protection, 
 meaning that a user could interact with the kernel's memory directly. All modern Intel 
-emulators start in this mode so that they can continue happily in it, or switch to a more
-advanced mode (I don't totally understand this switch yet so I won't talk about it).
+emulators start in this mode so that they can continue happily in it, or switch to this more
+advanced mode.
 
-Next we should talk about how to organize memory, but I'll save that for another round of work, because I
-want to jump to work on something else for a bit.
+## 2. Writing the Kernel
+Writing assembly is really hard, so developers have created (still lower level but
+higher than assembly) level languauges like C, pascal, BASIC, etc. These compilers
+will compile back to machine code, but they are easier for (a human) to work with because
+of the addition of better syntax and routines.
+
+I'm *so* excited for this part, because we get to write in C! First, let's try to
+understand how C related to assembly. Here we have a simple script, and the second
+line also shows how we compile it.
+
+```c
+// Define an empty function that returns an integer
+// compile: gcc -ffreestanding -c basic.c -o basic.o
+
+int my_function () {
+    return 0xbaba ;
+}
+```
+
+Once we have compiled, we can inspect the object. And guess what we see! We see
+assembly instructions.
+
+```c
+objdump -d basic.o
+
+basic.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <my_function>:
+   0:	55                   	push   %rbp
+   1:	48 89 e5             	mov    %rsp,%rbp
+   4:	b8 ba ba 00 00       	mov    $0xbaba,%eax
+   9:	5d                   	pop    %rbp
+   a:	c3                   	retq   
+```
+
+It's then the job of a linker to bring together all the routines in some set of
+object files, and link together into some form of machine code. produce the final binary,
+and then convert :
+
+```c
+ld -o basic.bin -Ttext 0x0 --oformat binary basic.o
+```
+
+and then we use something called a "disassembler" to convert to what will look like
+our original assembly files, but with a little more information.
+
+```bash
+ndisasm -b 32 basic.bin > basic.dis
+```
+```
+cat basic.dis
+00000000  55                push ebp
+00000001  48                dec eax
+00000002  89E5              mov ebp,esp
+00000004  B8BABA0000        mov eax,0xbaba
+00000009  5D                pop ebp
+0000000A  C3                ret
+...
+```
+
+Here we see:
+
+ 1. file offsets of the instructions
+ 2. machine code
+ 3. assembly
+
+And that seems to be the way to map back to assembly to see what is going on.
+In case you haven't done this already, here are the packages I installed to
+help compile stuffs:
+
+```
+apt-get install -y gcc \
+    binutils \
+    make \
+    linux-source
+```
+
+
+### Steps we will take
+But I'm getting impatient! Here is what we are going to do.
+
+ - Write and compile the kernel code.
+ - Write and assemble the boot sector code
+ - Create a kernel image that includes not only our boot sector but our compiled
+kernel code
+ - Load our kernel code into memory
+ - Switch to 32-bit protected mode
+ - Begin executing our kernel code

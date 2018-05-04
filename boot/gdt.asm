@@ -1,4 +1,8 @@
 ; global descriptor table describes segments of memory for processor
+; This is the hardest part about switching the CPU from 16-bit real mode into 32-bit
+; protected mode. We must prepare the GDT, an in-memory complex data structure
+; that defines memory segments and their protected-mode attributes
+
 gdt_start: ; don't remove the labels, they're needed to compute sizes and jumps
     ; the GDT starts with a null 8-byte
     dd 0x0 ; 4 byte
