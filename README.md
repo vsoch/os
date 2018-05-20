@@ -1,6 +1,27 @@
 # OS
 
 Let's have a go at creating an OS, and since containers can keep things tidy, let's create inside a Docker container.
+
+# Quick Generation
+The dependencies take a while to compile, so it's easiest to build the base first:
+
+```bash
+docker build -f Dockerfile.base -t vanessa/os-base .
+```
+
+Then when you have this container, you can easily develop this primary one:
+
+```base
+docker build -t vanessa/os .
+```
+
+Since the operating system that is built is under `/rootfs` I like to mount the host files in `/code` so I can make changes and easily develop. That looks like this:
+
+```bash
+docker run -it -v $PWD:/code --entrypoint bash vanessa/os
+```
+
+# Detailed Walkthough
 First I will walk through the steps done in the [Dockerfile](Dockerfile).
 
 ## 1. Create bootsector

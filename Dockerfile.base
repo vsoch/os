@@ -1,0 +1,19 @@
+FROM ubuntu:16.04
+
+# docker build -f Dockerfile.base -t vanessa/os-base .
+
+########################################
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV PREFIX="/usr/local/i386elfgcc"
+ENV PATH="$PREFIX/bin:$PATH"
+
+# 1. Install dependencies
+
+RUN apt-get update && apt-get install -y nasm qemu ghex g++ gcc
+
+# We will use /src to keep raw files, and /code for development
+RUN mkdir -p /code
+ADD . /code
+
+RUN /bin/bash /code/install_deps.sh

@@ -17,11 +17,11 @@ KERNEL_OFFSET equ 0x1000 ; The same one we used when linking the kernel
     call switch_to_pm
     jmp $ ; this will actually never be executed
 
-%include "print.asm"
-%include "disk.asm"
-%include "gdt.asm"
-%include "print-32bit.asm"
-%include "switch.asm"
+%include "boot/print.asm"
+%include "boot/disk.asm"
+%include "boot/gdt.asm"
+%include "boot/print-32bit.asm"
+%include "boot/switch.asm"
 
 [bits 16]
 load_kernel:
